@@ -10,15 +10,9 @@ from DynamixelSDK.ros.dynamixel_sdk.src.dynamixel_sdk import *
 from DynamixelSDK.ros.dynamixel_sdk.src.dynamixel_sdk.port_handler import PortHandler
 from DynamixelSDK.ros.dynamixel_sdk.src.dynamixel_sdk.packet_handler import PacketHandler
 from DynamixelSDK.ros.dynamixel_sdk.src.dynamixel_sdk.robotis_def import *
-from manipulator.msg import *
-from geometry_msgs.msg import Point, Twist
-from std_msgs.msg import Bool, String
-import numpy as np
-
+from re_project.msg import *
 import math
 import sys, tty, termios
-
-from valueup_project.msg import ObjPoint
 
 fd = sys.stdin.fileno()
 old_settings = termios.tcgetattr(fd)
@@ -140,7 +134,6 @@ class MotorControlHub:
         
         self.target_first_link_flag = False
         
-        
         self.set_pos.ax_id = AX_DXL_ID
         self.set_pos.xl_id = XL_DXL_ID
 
@@ -158,7 +151,6 @@ class MotorControlHub:
 
     def set_goal_pos_callback(self,data):
         self.set_pos = data
-
 
     def set_goal_pos(self,data:SyncSetPosition):
         for idx in range(len(data.ax_id)): # id radian position
