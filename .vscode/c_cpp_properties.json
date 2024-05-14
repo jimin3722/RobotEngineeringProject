@@ -1,0 +1,48 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/choiyoonji/catkin_ws/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/choiyoonji/catkin_ws/src/ros_control/combined_robot_hw/include/**",
+        "/home/choiyoonji/catkin_ws/src/ros_control/combined_robot_hw_tests/include/**",
+        "/home/choiyoonji/catkin_ws/src/ros_control/controller_interface/include/**",
+        "/home/choiyoonji/catkin_ws/src/ros_control/controller_manager/include/**",
+        "/home/choiyoonji/catkin_ws/src/ros_control/controller_manager_tests/include/**",
+        "/home/choiyoonji/catkin_ws/src/DynamixelSDK/ros/dynamixel_sdk/include/**",
+        "/home/choiyoonji/catkin_ws/src/franka_ros/franka_control/include/**",
+        "/home/choiyoonji/catkin_ws/src/franka_ros/franka_example_controllers/include/**",
+        "/home/choiyoonji/catkin_ws/src/franka_ros/franka_gazebo/include/**",
+        "/home/choiyoonji/catkin_ws/src/franka_ros/franka_gripper/include/**",
+        "/home/choiyoonji/catkin_ws/src/franka_ros/franka_hw/include/**",
+        "/home/choiyoonji/catkin_ws/src/ros_control/hardware_interface/include/**",
+        "/home/choiyoonji/catkin_ws/src/ros_control/joint_limits_interface/include/**",
+        "/home/choiyoonji/catkin_ws/src/ros-bridge/pcl_recorder/include/**",
+        "/home/choiyoonji/catkin_ws/src/re_project/include/**",
+        "/home/choiyoonji/catkin_ws/src/rl_manipulator/include/**",
+        "/home/choiyoonji/catkin_ws/src/rl_study/include/**",
+        "/home/choiyoonji/catkin_ws/src/common_msgs/sensor_msgs/include/**",
+        "/home/choiyoonji/catkin_ws/src/serial/include/**",
+        "/home/choiyoonji/catkin_ws/src/ros_control/transmission_interface/include/**",
+        "/home/choiyoonji/catkin_ws/src/ublox_f9p/ublox_gps/include/**",
+        "/home/choiyoonji/catkin_ws/src/ublox_f9p/ublox_msgs/include/**",
+        "/home/choiyoonji/catkin_ws/src/ublox_f9p/ublox_serialization/include/**",
+        "/home/choiyoonji/catkin_ws/src/velodyne/velodyne_driver/include/**",
+        "/home/choiyoonji/catkin_ws/src/velodyne/velodyne_laserscan/include/**",
+        "/home/choiyoonji/catkin_ws/src/velodyne/velodyne_pcl/include/**",
+        "/home/choiyoonji/catkin_ws/src/velodyne/velodyne_pointcloud/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
