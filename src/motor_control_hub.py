@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -- coding: utf-8 --
 
 import os, sys
@@ -24,6 +24,12 @@ def getch():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return ch
 
+####mode 설정!!!####
+
+#MODE = "grip"
+MODE = "pen"
+
+###################
 
 #*************************AX-12A(PROTOCOL_VERSION 1.0)*****************************#
 
@@ -43,7 +49,7 @@ AX_ADDR_PUNCH                  = 48 # 모터에 가하는 최소 전류 -> 다�
 
 AX_PROTOCOL_VERSION = 1.0
 
-AX_DXL_ID = [0, 1, 2, 3] # 모터 ID 0부터 순서대로 설정
+AX_DXL_ID = [1, 2, 3, 4] # 모터 ID 0부터 순서대로 설정
 
 BAUDRATE = 1000000
 
@@ -137,7 +143,7 @@ class MotorControlHub:
         self.set_pos.ax_id = AX_DXL_ID
         self.set_pos.xl_id = XL_DXL_ID
 
-        self.set_pos.ax_position = [500, 500, 500]
+        self.set_pos.ax_position = [0, 0, 0, 0]
         self.set_pos.xl_position = [2048]
 
         self.set_ax_speed.id = AX_DXL_ID
@@ -158,10 +164,12 @@ class MotorControlHub:
             print("Set Goal AX_Position of ID %s = %s, %s" % (data.ax_id[idx], data.ax_position[idx], ax_pos))
             ax_packet_handler.write2ByteTxRx(port_handler,data.ax_id[idx], AX_ADDR_GOAL_POSITION, ax_pos)
 
-        for idx in range(len(data.xl_id)): # id radian position
-            xl_pos = xl_rad_to_position(data.xl_position[idx])
-            print("Set Goal XL_Position of ID %s = %s, %s" % (data.xl_id[idx], data.xl_position[idx], xl_pos))
-            xl_packet_handler.write4ByteTxRx(port_handler,data.xl_id[idx], XL_ADDR_GOAL_POSITION, xl_pos)
+        if MODE == "grip":
+            
+            for idx in range(len(data.xl_id)): # id radian position
+                xl_pos = xl_rad_to_position(data.xl_position[idx])
+                print("Set Goal XL_Position of ID %s = %s, %s" % (data.xl_id[idx], data.xl_position[idx], xl_pos))
+                xl_packet_handler.write4ByteTxRx(port_handler,data.xl_id[idx], XL_ADDR_GOAL_POSITION, xl_pos)
 
     def present_position_callback(self):
         present_position = SyncSetPosition()
@@ -190,6 +198,8 @@ class MotorControlHub:
 
 
 def main():
+
+
     rospy.init_node('motor_control_hub')
  
 
@@ -231,21 +241,23 @@ def main():
             ax_packet_handler.write1ByteTxRx(port_handler, id, AX_ADDR_CCW_COMPLIANCE_SLOPE, AX_CCW_COMPLIANCE_SLOPE) #초기 slope 설정
             ax_packet_handler.write2ByteTxRx(port_handler, id, AX_ADDR_MOVING_SPEED, MOTOR_VELOCITY[id]) #초기 속도 설정
 
-    for id in XL_DXL_ID:
-        dxl_comm_result, dxl_error = xl_packet_handler.write1ByteTxRx(port_handler, id, XL_ADDR_TORQUE_ENABLE, XL_TORQUE_ENABLE)
-        if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % xl_packet_handler.getTxRxResult(dxl_comm_result))
-            print("Press any key to terminate...")
-            getch()
-            quit()
-        elif dxl_error != 0:
-            print("%s" % xl_packet_handler.getRxPacketError(dxl_error))
-            print("Press any key to terminate...")
-            getch()
-            quit()
-        else:
-            xl_packet_handler.write4ByteTxRx(port_handler, id, XL_ADDR_PROFILE_VELOCITY, MOTOR_VELOCITY[id])
-        print(f"DYNAMIXEL(ID : {id}) has been successfully connected")
+    if MODE == "grip":
+
+        for id in XL_DXL_ID:
+            dxl_comm_result, dxl_error = xl_packet_handler.write1ByteTxRx(port_handler, id, XL_ADDR_TORQUE_ENABLE, XL_TORQUE_ENABLE)
+            if dxl_comm_result != COMM_SUCCESS:
+                print("%s" % xl_packet_handler.getTxRxResult(dxl_comm_result))
+                print("Press any key to terminate...")
+                getch()
+                quit()
+            elif dxl_error != 0:
+                print("%s" % xl_packet_handler.getRxPacketError(dxl_error))
+                print("Press any key to terminate...")
+                getch()
+                quit()
+            else:
+                xl_packet_handler.write4ByteTxRx(port_handler, id, XL_ADDR_PROFILE_VELOCITY, MOTOR_VELOCITY[id])
+            print(f"DYNAMIXEL(ID : {id}) has been successfully connected")
 
     
     print("Ready to get & set Position.")
