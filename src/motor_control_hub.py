@@ -91,7 +91,7 @@ XL_ADDR_PRESENT_POSITION        = 132
 
 XL_PROTOCOL_VERSION = 2.0
 
-XL_DXL_ID = [4] # 그리퍼 모터 ID 4로 고정
+XL_DXL_ID = [5] # 그리퍼 모터 ID 5로 고정
 
 
 XL_TORQUE_ENABLE = 1
