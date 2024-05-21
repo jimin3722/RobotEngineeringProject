@@ -167,9 +167,14 @@ class MotorControlHub:
         self.set_ax_speed.speed = [40]
 
         self.init = True
-        
-        # ex) : { link_1" : [조인트부터 링크의 질점까지 거리(cm), 질점 무게(g)] }
-        self.link_info = {"link_2" : [9.98, 80.6], "link_3" : [9.98, 80.6], "penholder" : [3.7, 26.5], "gripper" : []}
+
+        if MODE == "pen":
+            # ex) : { link_1" : [조인트부터 링크의 질점까지 거리(cm), 질점 무게(g)] }
+            self.link_info = {"link_2" : [9.98, 80.6], "link_3" : [9.98, 80.6], "end_effettor" : [3.7, 26.5]}
+
+        if MODE == "grip":
+            self.link_info = {"link_2" : [9.98, 80.6], "link_3" : [9.98, 80.6], "end_effettor" : []}
+
         self.p2_torque = 0
         self.p3_torque = 0
         self.p4_torque = 0
@@ -225,8 +230,8 @@ class MotorControlHub:
         link_3_weight = self.link_info["link_3"][1]*0.001
 
         q_4 = present_rad[3]
-        end_effettor_length = self.link_info["penholder"][0]*0.01
-        end_effettor_weight = self.link_info["penholder"][1]*0.001
+        end_effettor_length = self.link_info["end_effettor"][0]*0.01
+        end_effettor_weight = self.link_info["end_effettor"][1]*0.001
 
         q_23 = q_2 + q_3
         q_234 = q_2 + q_3 + q_4
