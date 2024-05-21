@@ -3,6 +3,8 @@
 
 import os, sys
 import rospy
+import numpy as np
+import time
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))))
 
@@ -117,6 +119,16 @@ def ax_rad_to_position(rad):
         position = 0
     return position
 
+def ax_position_to_rad(pos):
+    y_axis_position = 511
+    position = pos - y_axis_position
+    rad = position*(300/1024)*(math.pi/180)
+    if(rad > 2*math.pi):
+        print("overposition: ",position)
+        position = 360
+    elif(rad < 0) :
+        position = 0
+    return rad
 
 def xl_rad_to_position(rad):
     y_axis_position = 2047
@@ -135,6 +147,11 @@ class MotorControlHub:
 
         self.set_pos = SyncSetPosition()
         self.set_ax_speed = AXSyncSetMovingSpeed()
+
+        self.present_position = SyncSetPosition()
+        self.present_position.ax_position = [0,0,0,0]
+        
+        self.joint_gain = [0,-10,0,0]
         
         self.target_position_flag = False
         
@@ -148,21 +165,143 @@ class MotorControlHub:
 
         self.set_ax_speed.id = AX_DXL_ID
         self.set_ax_speed.speed = [40]
+
+        self.init = True
         
+        # ex) : { link_1" : [조인트부터 링크의 질점까지 거리(cm), 질점 무게(g)] }
+        self.link_info = {"link_2" : [9.98, 80.6], "link_3" : [9.98, 80.6], "penholder" : [3.7, 26.5], "gripper" : []}
+        self.p2_torque = 0
+        self.p3_torque = 0
+        self.p4_torque = 0
+
         rospy.Subscriber('set_position', SyncSetPosition, self.set_goal_pos_callback, queue_size=1)
         
         self.pos_pub = rospy.Publisher('present_position', SyncSetPosition, queue_size=1)
         self.ax_speed_pub = rospy.Publisher('present_ax_speed', AXSyncSetMovingSpeed, queue_size=1)
 
+    # 테스트 용
+    def calc_joint_gain(self, ax_pos, idx):
+        
+        joint_offset = ax_pos - self.present_position.ax_position[idx]
+        
+        if joint_offset > 0:
+            if idx == 2:
+                self.joint_gain[idx] += 2
+            else:
+                self.joint_gain[idx] += 0.4 #round(joint_offset/10)
 
+        elif joint_offset < 0:
+            if idx == 2:
+                self.joint_gain[idx] -= 2
+            else:
+                self.joint_gain[idx] -= 0.4 #round(joint_offset/10)
+            
+        ax_pos += round(self.joint_gain[idx])
+        
+        return ax_pos
+
+
+    def calc_torque(self):
+        
+        present_pos = self.present_position.ax_position
+        ax_id = self.present_position.ax_id
+
+        present_rad = []
+
+        print(present_pos)
+
+        for idx in range(len(ax_id)): # id radian position
+            pos_rad = ax_position_to_rad(present_pos[idx])
+            present_rad.append(pos_rad)
+        
+        print(present_rad)
+        
+        q_2 = present_rad[1]
+        link_2_length = self.link_info["link_2"][0]*0.01
+        link_2_weight = self.link_info["link_2"][1]*0.001
+
+        q_3 = present_rad[2]
+        link_3_length = self.link_info["link_3"][0]*0.01
+        link_3_weight = self.link_info["link_3"][1]*0.001
+
+        q_4 = present_rad[3]
+        end_effettor_length = self.link_info["penholder"][0]*0.01
+        end_effettor_weight = self.link_info["penholder"][1]*0.001
+
+        q_23 = q_2 + q_3
+        q_234 = q_2 + q_3 + q_4
+
+        proj_link_2 = link_2_length*math.sin(q_2)
+        proj_link_3 = link_3_length*math.sin(q_23)
+        proj_link_4 = end_effettor_length*math.sin(q_234)
+
+        self.p2_torque = 9.81*link_2_weight*(proj_link_2) + 9.81*link_3_weight*(proj_link_2+proj_link_3) + 9.81*end_effettor_weight*(proj_link_2+proj_link_3+proj_link_4)
+        self.p3_torque = 9.81*link_3_weight*(proj_link_3) + 9.81*end_effettor_weight*(proj_link_3+proj_link_4)
+        self.p4_torque = 9.81*end_effettor_weight*(proj_link_4)
+
+        print("p2_torque:",self.p2_torque)
+        print("p3_torque:",self.p3_torque)
+        print("p2_torque:",self.p4_torque)
+
+    
     def set_goal_pos_callback(self,data):
         self.set_pos = data
 
-    def set_goal_pos(self,data:SyncSetPosition):
+    # 테스트 용
+    def set_goal_pos2(self,data:SyncSetPosition):
+
+
+        ax_pos = np.zeros((4))
+
         for idx in range(len(data.ax_id)): # id radian position
-            ax_pos = ax_rad_to_position(data.ax_position[idx])
-            print("Set Goal AX_Position of ID %s = %s, %s" % (data.ax_id[idx], data.ax_position[idx], ax_pos))
-            ax_packet_handler.write2ByteTxRx(port_handler,data.ax_id[idx], AX_ADDR_GOAL_POSITION, ax_pos)
+            
+            ax_pos[idx] = ax_rad_to_position(data.ax_position[idx])
+
+        joint_flag = [False, False, False, False]
+                
+        if self.init:        
+            self.init = False
+            self.start_pos = np.array(self.present_position.ax_position)
+        
+        print(ax_pos)
+
+        while(not(joint_flag[0] and joint_flag[1] and joint_flag[2] and joint_flag[3])):
+
+            self.present_position_callback()
+
+            now_pos = np.array(self.present_position.ax_position)
+            
+            joint_offsets = now_pos - ax_pos
+
+            for idx in range(len(data.ax_id)):
+
+                offset = joint_offsets[idx]
+
+                #print(joint_offsets)
+                #print(joint_flag)
+                #print(now_pos)
+                
+                if abs(offset) < 3 or joint_flag[idx]:
+                    joint_flag[idx] = True
+                    continue
+                
+                if offset > 0:
+
+                    if abs(offset) > 20:
+                        self.start_pos[idx] -= 13
+                    else:
+                        self.start_pos[idx] -= 2#round(abs(joint_offsets[idx])/10)
+                
+                if offset < 0:
+
+                    if abs(offset) > 20:
+                        self.start_pos[idx] += 13
+                    else:
+                        self.start_pos[idx] += 2#round(abs(joint_offsets[idx])/10)
+
+            for idx in range(len(data.ax_id)): # id radian position
+
+                ax_packet_handler.write2ByteTxRx(port_handler,data.ax_id[idx], AX_ADDR_GOAL_POSITION, self.start_pos[idx])             
 
         if MODE == "grip":
             
@@ -171,30 +310,54 @@ class MotorControlHub:
                 print("Set Goal XL_Position of ID %s = %s, %s" % (data.xl_id[idx], data.xl_position[idx], xl_pos))
                 xl_packet_handler.write4ByteTxRx(port_handler,data.xl_id[idx], XL_ADDR_GOAL_POSITION, xl_pos)
 
+
+    def set_goal_pos(self,data:SyncSetPosition):
+
+        t = [0,self.p2_torque, self.p3_torque, self.p4_torque]
+
+        for idx in range(len(data.ax_id)): # id radian position
+            ax_pos = ax_rad_to_position(data.ax_position[idx])
+
+            print("Set Goal AX_Position of ID %s = %s, %s" % (data.ax_id[idx], data.ax_position[idx], ax_pos))
+            #ax_pos = self.calc_joint_gain(ax_pos, idx)
+            ax_packet_handler.write2ByteTxRx(port_handler,data.ax_id[idx], AX_ADDR_GOAL_POSITION, ax_pos - round(t[idx]*70))                
+
+        if MODE == "grip":
+            
+            for idx in range(len(data.xl_id)): # id radian position
+                xl_pos = xl_rad_to_position(data.xl_position[idx])
+                print("Set Goal XL_Position of ID %s = %s, %s" % (data.xl_id[idx], data.xl_position[idx], xl_pos))
+                xl_packet_handler.write4ByteTxRx(port_handler,data.xl_id[idx], XL_ADDR_GOAL_POSITION, xl_pos)
+
+
     def present_position_callback(self):
-        present_position = SyncSetPosition()
-        present_position.ax_id = AX_DXL_ID
-        present_position.xl_id = XL_DXL_ID
-        present_position.ax_position = []
-        present_position.xl_position = []
+        self.present_position.ax_id = AX_DXL_ID
+        self.present_position.xl_id = XL_DXL_ID
+        ax_position = []
+        xl_position = []
 
         for id in AX_DXL_ID:
             dxl_present_position, dxl_comm_result, dxl_error = ax_packet_handler.read2ByteTxRx(port_handler, id, AX_ADDR_PRESENT_POSITION)
-            present_position.ax_position.append(dxl_present_position)
+            ax_position.append(dxl_present_position)
             if(dxl_comm_result != COMM_SUCCESS) :
                 return
             if(dxl_error != 0) :
                 return
+        
+        if MODE == "grip":
+   
+            for id in XL_DXL_ID:
+                dxl_present_position, dxl_comm_result, dxl_error = xl_packet_handler.read4ByteTxRx(port_handler, id, XL_ADDR_PRESENT_POSITION)
+                xl_position.append(dxl_present_position)
+                if(dxl_comm_result != COMM_SUCCESS) :
+                    return
+                if(dxl_error != 0) :
+                    return
+                
+        self.present_position.ax_position = ax_position 
+        self.present_position.xl_position = xl_position
             
-        for id in XL_DXL_ID:
-            dxl_present_position, dxl_comm_result, dxl_error = xl_packet_handler.read4ByteTxRx(port_handler, id, XL_ADDR_PRESENT_POSITION)
-            present_position.xl_position.append(dxl_present_position)
-            if(dxl_comm_result != COMM_SUCCESS) :
-                return
-            if(dxl_error != 0) :
-                return
-            
-        self.pos_pub.publish(present_position)
+        self.pos_pub.publish(self.present_position)
 
 
 def main():
@@ -271,9 +434,11 @@ def main():
 
     while not rospy.is_shutdown():
 
-        data_hub.set_goal_pos(data_hub.set_pos)
-
         data_hub.present_position_callback()
+
+        data_hub.set_goal_pos(data_hub.set_pos)
+        
+        data_hub.calc_torque()
 
         rate.sleep()
 
