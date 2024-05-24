@@ -9,15 +9,20 @@ import numpy as np
 from ikpy.chain import Chain
 from ikpy.link import OriginLink, URDFLink
 import matplotlib.pyplot as plt
+import inverse_kinematics
 
 
 AX_DXL_ID = [1, 2, 3, 4]
-XM_DXL_ID = [5]
+XL_DXL_ID = [5]
 L1 = 0
 THETA1 = 0
 L2 = 0
 THETA2 = 0
 
+l1 = 11.75
+l2 = 15
+l3 = 15
+l4 = 7
     
 class ThetaPub:
     def __init__(self):
@@ -53,14 +58,15 @@ def main():
     
     theta_pub = ThetaPub()
     Theta = SyncSetPosition()
+    Inverse = inverse_kinematics.inverse_kinematics(l1, l2, l3, l4)
     
     Theta.ax_id = AX_DXL_ID
-    Theta.xm_id_p1 = XM_DXL_ID
+    Theta.xl_id = XL_DXL_ID
     
     # initialpoint -> pickpoint -> grip -> initialpoint -> placepoint -> ungrip -> ...
-    InitialPoint = []
-    PickPoint = []
-    PlacePoint = []
+    InitialPoint = [] # 가운데 적당한 높이 -> 쌓여있는 블럭에 닿지 않는
+    PickPoint = [] # 블럭 집는 위치
+    PlacePoint = [] # 블럭 놓는 위치
     
     GripFlag = False
     
@@ -69,13 +75,13 @@ def main():
         Theta = SyncSetPosition()
         
         Theta.ax_id = AX_DXL_ID
-        Theta.xm_id = XM_DXL_ID
+        Theta.xl_id = XL_DXL_ID
         
         Theta.ax_position.append()
         Theta.ax_position.append()
         Theta.ax_position.append()
         Theta.ax_position.append()
-        Theta.xm_position.append()
+        Theta.xl_position.append()
         
         theta_pub.ThetaPublisher.publish(Theta)
         
