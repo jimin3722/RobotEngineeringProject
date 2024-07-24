@@ -1,7 +1,10 @@
 # RobotEngineeringProject
-로봇팔로 원과 직선 그리기 프로젝트 
+지능로봇공학 로봇팔로 원과 직선 그리기 프로젝트 
 
-결과:
+
+Result
+------
+
 ![image](https://github.com/user-attachments/assets/79878e15-c6a2-4a3c-87f7-2de8ffdb668a)
 
 
