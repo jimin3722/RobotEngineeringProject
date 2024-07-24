@@ -60,8 +60,8 @@ AX_TORQUE_DISABLE = 0
 
 AX_CW_COMPLIANCE_MARGIN = 1 #실제로 설정하려는 값
 AX_CCW_COMPLIANCE_MARGIN = 1
-AX_CW_COMPLIANCE_SLOPE = 128
-AX_CCW_COMPLIANCE_SLOPE = 128
+AX_CW_COMPLIANCE_SLOPE = 32#64
+AX_CCW_COMPLIANCE_SLOPE = 32#64
 
 DEVICENAME = '/dev/ttyUSB0'
 
@@ -102,7 +102,7 @@ XL_TORQUE_DISABLE = 0
 xl_packet_handler = PacketHandler(XL_PROTOCOL_VERSION)
 
 
-MOTOR_VELOCITY = [100, 100, 100, 100, 100] # 모터 ID 별 속도
+MOTOR_VELOCITY = [30, 30, 30, 30, 30] # 모터 ID 별 속도
 
 
 #**********************************************************************************#
@@ -244,9 +244,9 @@ class MotorControlHub:
         self.p3_torque = 9.81*link_3_weight*(proj_link_3) + 9.81*end_effettor_weight*(proj_link_3+proj_link_4)
         self.p4_torque = 9.81*end_effettor_weight*(proj_link_4)
 
-        print("p2_torque:",self.p2_torque)
-        print("p3_torque:",self.p3_torque)
-        print("p2_torque:",self.p4_torque)
+        # print("p2_torque:",self.p2_torque)
+        # print("p3_torque:",self.p3_torque)
+        # print("p2_torque:",self.p4_torque)
 
     
     def set_goal_pos_callback(self,data):
@@ -321,11 +321,31 @@ class MotorControlHub:
         t = [0,self.p2_torque, self.p3_torque, self.p4_torque]
 
         for idx in range(len(data.ax_id)): # id radian position
+            
             ax_pos = ax_rad_to_position(data.ax_position[idx])
-
             print("Set Goal AX_Position of ID %s = %s, %s" % (data.ax_id[idx], data.ax_position[idx], ax_pos))
-            #ax_pos = self.calc_joint_gain(ax_pos, idx)
-            ax_packet_handler.write2ByteTxRx(port_handler,data.ax_id[idx], AX_ADDR_GOAL_POSITION, ax_pos - round(t[idx]*70))                
+
+            # if idx == 0:
+            #     for_offset_1 = self.present_position.ax_position[0] - ax_pos
+            #     if for_offset_1 > 5:
+            #         offset_1 = -6
+            #     elif for_offset_1 < -5:
+            #         offset_1 = 6
+            #     else:
+            #         offset_1 = 0
+            #     ax_pos += offset_1
+            
+            # if idx == 3:
+            #     for_offset_4 = self.present_position.ax_position[3] - ax_pos
+            #     if for_offset_4 > 4:
+            #         offset_4 = -6
+            #     elif for_offset_4 < -4:
+            #         offset_4 = 6
+            #     else:
+            #         offset_4 = 0
+            #     ax_pos += offset_4
+
+            ax_packet_handler.write2ByteTxRx(port_handler,data.ax_id[idx], AX_ADDR_GOAL_POSITION, ax_pos - round(t[idx]*50))                
 
         if MODE == "grip":
             
@@ -407,6 +427,9 @@ def main():
             ax_packet_handler.write1ByteTxRx(port_handler, id, AX_ADDR_CCW_COMPLIANCE_MARGIN, AX_CCW_COMPLIANCE_MARGIN) #초기 margin 설정
             ax_packet_handler.write1ByteTxRx(port_handler, id, AX_ADDR_CW_COMPLIANCE_SLOPE, AX_CW_COMPLIANCE_SLOPE) #초기 slope 설정
             ax_packet_handler.write1ByteTxRx(port_handler, id, AX_ADDR_CCW_COMPLIANCE_SLOPE, AX_CCW_COMPLIANCE_SLOPE) #초기 slope 설정
+            # if id == 4:
+            #     ax_packet_handler.write1ByteTxRx(port_handler, id, 128, 128) #초기 slope 설정
+
             ax_packet_handler.write2ByteTxRx(port_handler, id, AX_ADDR_MOVING_SPEED, MOTOR_VELOCITY[id]) #초기 속도 설정
 
     if MODE == "grip":
@@ -435,7 +458,7 @@ def main():
     ############################################################################################################
 
     data_hub = MotorControlHub()
-    rate = rospy.Rate(30)
+    rate = rospy.Rate(50)
 
     while not rospy.is_shutdown():
 
